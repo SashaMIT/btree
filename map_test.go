@@ -1484,3 +1484,61 @@ func TestMapDeepCopy(t *testing.T) {
 	assert(count1 == Ncols*Nvals/2)
 	assert(count2 == Ncols*Nvals/2)
 }
+
+func TestMapIterPrevStaysFalsePastStart(t *testing.T) {
+	tr := NewMap[int, int](0)
+	tr.Set(1, 1)
+	tr.Set(2, 2)
+	tr.Set(3, 3)
+	iter := tr.Iter()
+	if !iter.Last() {
+		t.Fatal("Last")
+	}
+	if iter.Next() {
+		t.Fatal("Next past the end")
+	}
+	if !iter.Prev() || iter.Key() != 2 {
+		t.Fatalf("first Prev, key %d", iter.Key())
+	}
+	if !iter.Prev() || iter.Key() != 1 {
+		t.Fatalf("second Prev, key %d", iter.Key())
+	}
+	if iter.Prev() {
+		t.Fatal("Prev past the start")
+	}
+	if iter.Prev() {
+		t.Fatalf("Prev returned true past the start, key %d", iter.Key())
+	}
+
+	if !iter.Seek(2) || iter.Key() != 2 {
+		t.Fatalf("Seek, key %d", iter.Key())
+	}
+	if !iter.Prev() || iter.Key() != 1 {
+		t.Fatalf("Prev after Seek, key %d", iter.Key())
+	}
+	if iter.Prev() {
+		t.Fatal("Prev past the start after Seek")
+	}
+	if iter.Prev() {
+		t.Fatalf("Prev returned true past the start after Seek, key %d", iter.Key())
+	}
+
+	if !iter.First() {
+		t.Fatal("First")
+	}
+	if iter.Prev() {
+		t.Fatal("Prev past the start before Seek")
+	}
+	if !iter.Seek(2) || iter.Key() != 2 {
+		t.Fatalf("Seek after walking off the start, key %d", iter.Key())
+	}
+	if !iter.Next() || iter.Key() != 3 {
+		t.Fatalf("Next after Seek, key %d", iter.Key())
+	}
+	if iter.Next() {
+		t.Fatal("Next past the end after Seek")
+	}
+	if iter.Next() {
+		t.Fatalf("Next returned true past the end after Seek, key %d", iter.Key())
+	}
+}

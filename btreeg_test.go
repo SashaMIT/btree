@@ -1982,3 +1982,64 @@ func TestBenchmarkIteratorReuseWorks(t *testing.T) {
 		reusableIter.Release()
 	}
 }
+
+// Last and Seek must clear the end flags the way First does. Otherwise a
+// later Prev, after the cursor has already walked off the start, treats a
+// stale atend as a reason to jump back into the tree.
+func TestGenericIterPrevStaysFalsePastStart(t *testing.T) {
+	tr := NewBTreeG(func(a, b int) bool { return a < b })
+	tr.Set(1)
+	tr.Set(2)
+	tr.Set(3)
+	iter := tr.Iter()
+	if !iter.Last() {
+		t.Fatal("Last")
+	}
+	if iter.Next() {
+		t.Fatal("Next past the end")
+	}
+	if !iter.Prev() || iter.Item() != 2 {
+		t.Fatalf("first Prev, item %d", iter.Item())
+	}
+	if !iter.Prev() || iter.Item() != 1 {
+		t.Fatalf("second Prev, item %d", iter.Item())
+	}
+	if iter.Prev() {
+		t.Fatal("Prev past the start")
+	}
+	if iter.Prev() {
+		t.Fatalf("Prev returned true past the start, item %d", iter.Item())
+	}
+
+	if !iter.Seek(2) || iter.Item() != 2 {
+		t.Fatalf("Seek, item %d", iter.Item())
+	}
+	if !iter.Prev() || iter.Item() != 1 {
+		t.Fatalf("Prev after Seek, item %d", iter.Item())
+	}
+	if iter.Prev() {
+		t.Fatal("Prev past the start after Seek")
+	}
+	if iter.Prev() {
+		t.Fatalf("Prev returned true past the start after Seek, item %d", iter.Item())
+	}
+
+	if !iter.First() {
+		t.Fatal("First")
+	}
+	if iter.Prev() {
+		t.Fatal("Prev past the start before Seek")
+	}
+	if !iter.Seek(2) || iter.Item() != 2 {
+		t.Fatalf("Seek after walking off the start, item %d", iter.Item())
+	}
+	if !iter.Next() || iter.Item() != 3 {
+		t.Fatalf("Next after Seek, item %d", iter.Item())
+	}
+	if iter.Next() {
+		t.Fatal("Next past the end after Seek")
+	}
+	if iter.Next() {
+		t.Fatalf("Next returned true past the end after Seek, item %d", iter.Item())
+	}
+}
